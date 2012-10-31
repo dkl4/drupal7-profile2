@@ -28,6 +28,8 @@ function profile2_install() {
  * Implements hook_schema().
  */
 function profile2_schema() {
+  // The profile table is the table that carries all the USER data.
+  // This table will have many rows.
   $schema['profile'] = array(
     'description' => 'Stores profile items.',
     'fields' => array(
@@ -84,6 +86,9 @@ function profile2_schema() {
     'primary key' => array('pid'),
   );
 
+  // The profile_type table stores information about the profile type
+  // Is the type definition exportable?  What is the machine name of this TYPE?
+  // This table will only have a few rows.
   $schema['profile_type'] = array(
     'description' => 'Stores information about all defined profile types.',
     'fields' => array(
