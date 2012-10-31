@@ -1,0 +1,93 @@
+<?php
+
+/**
+ * @file
+ * Support for configurable user profiles.
+ */
+
+/**
+ * Implements hook_entity_info().
+ */
+function profile2_entity_info() {
+  $return = array(
+    'profile2' => array(
+      'label' => t('Profile'),
+      'plural label' => t('Profiles'),
+      'description' => t('Profile2 user profiles.'),
+      'entity class' => 'Profile',
+      'controller class' => 'EntityAPIController',
+      'base table' => 'profile',                    // Defined in profile2.install
+      'fieldable' => TRUE,
+      'view modes' => array(
+        'account' => array(
+          'label' => t('User account'),
+          'custom settings' => FALSE,
+        ),
+      ),
+      'entity keys' => array(
+        'id' => 'pid',
+        'bundle' => 'type',
+        'label' => 'label',
+      ),
+      'bundles' => array(),
+      'bundle keys' => array(
+        'bundle' => 'type',
+      ),
+      'uri callback' => 'entity_class_uri',
+      'access callback' => 'profile2_access',
+      'module' => 'profile2',
+      'metadata controller class' => 'Profile2MetadataController'    // Not sure what this does
+    ),
+  );
+
+  // Add bundle info but bypass entity_load() as we cannot use it here.
+  $types = db_select('profile_type', 'p')
+    ->fields('p')
+    ->execute()
+    ->fetchAllAssoc('type');
+
+  foreach ($types as $type => $info) {
+    $return['profile2']['bundles'][$type] = array(
+      'label' => $info->label,
+      'admin' => array(
+        'path' => 'admin/structure/profiles/manage/%profile2_type',  // Diff between path and REAL path?
+        'real path' => 'admin/structure/profiles/manage/' . $type,
+        'bundle argument' => 4,                                      // This must be type (arg num in path)
+        'access arguments' => array('administer profiles'),
+      ),
+    );
+  }
+
+  // Support entity cache module.
+  if (module_exists('entitycache')) {
+    $return['profile2']['field cache'] = FALSE;
+    $return['profile2']['entity cache'] = TRUE;
+  }
+
+  $return['profile2_type'] = array(
+    'label' => t('Profile type'),                                   // Kind of repeats above, but this is exportable
+    'plural label' => t('Profile types'),
+    'description' => t('Profiles types of Profile2 user profiles.'),
+    'entity class' => 'ProfileType',
+    'controller class' => 'EntityAPIControllerExportable',
+    'base table' => 'profile_type',                                 // One diff is this has different base table from above
+    'fieldable' => FALSE,
+    'bundle of' => 'profile2',                                      // This profile2_type is actually pretty diff rom 'profile2'
+    'exportable' => TRUE,
+    'entity keys' => array(
+      'id'    => 'id',
+      'name'  => 'type',
+      'label' => 'label',
+    ),
+    'access callback' => 'profile2_type_access',
+    'module' => 'profile2',
+    // Enable the entity API's admin UI.
+    'admin ui' => array(
+      'path' => 'admin/structure/profiles',
+      'file' => 'profile2.admin.inc',
+      'controller class' => 'Profile2TypeUIController',
+    ),
+  );
+
+  return $return;
+}
