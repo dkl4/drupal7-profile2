@@ -165,6 +165,35 @@ function profile2_get_types($type_name = NULL) {
 
 
 /**
+ * Load multiple profiles based on certain conditions.
+ *
+ * @param $pids
+ *   An array of profile IDs.
+ * @param $conditions
+ *   An array of conditions to match against the {profile} table.
+ * @param $reset
+ *   A boolean indicating that the internal cache should be reset.
+ * @return
+ *   An array of profile objects, indexed by pid.
+ *
+ * @see entity_load()
+ * @see profile2_load()
+ * @see profile2_load_by_user()
+ */
+function profile2_load_multiple($pids = array(), $conditions = array(), $reset = FALSE) {
+  return entity_load('profile2', $pids, $conditions, $reset);
+}
+
+
+/**
+ * Saves a profile type to the db.
+ */
+function profile2_type_save(ProfileType $type) {
+  $type->save();
+}
+
+
+/**
  * Access callback for the entity API.
  */
 function profile2_type_access($op, $type = NULL, $account = NULL) {
