@@ -103,6 +103,9 @@ function profile2_entity_info() {
  * @return
  *   A profile type array or FALSE if $type does not exist.
  */
+// This is another important function.  With it, you can go to
+// admin/structure/profiles/manage/PROFILE-TYPE-NAME/fields
+// and manage (add/del) fields to attach to the type
 function profile2_type_load($type) {
   return profile2_get_types($type);
 }
