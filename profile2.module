@@ -94,6 +94,22 @@ function profile2_entity_info() {
 
 
 /**
+ * Gets an array of all profile types, keyed by the type name.
+ *
+ * @param $type_name
+ *   If set, the type with the given name is returned.
+ * @return ProfileType[]
+ *   Depending whether $type isset, an array of profile types or a single one.
+ */
+// This is a pretty critical function.  With this, and with the form defined in
+// profile2.admin.inc, you can at least ADD a new profile type.
+function profile2_get_types($type_name = NULL) {
+  $types = entity_load_multiple_by_name('profile2_type', isset($type_name) ? array($type_name) : FALSE);
+  return isset($type_name) ? reset($types) : $types;
+}
+
+
+/**
  * Access callback for the entity API.
  */
 function profile2_type_access($op, $type = NULL, $account = NULL) {
