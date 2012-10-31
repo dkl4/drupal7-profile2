@@ -46,6 +46,8 @@ function profile2_entity_info() {
     ->execute()
     ->fetchAllAssoc('type');
 
+  // This defines where you MANAGE the profile types in the UI.  This is where
+  // you add, import, delete profiles, or manage (add/del) fields attached to the profile type
   foreach ($types as $type => $info) {
     $return['profile2']['bundles'][$type] = array(
       'label' => $info->label,
@@ -90,6 +92,19 @@ function profile2_entity_info() {
   );
 
   return $return;
+}
+
+
+/**
+ * Menu argument loader; Load a profile type by string.
+ *
+ * @param $type
+ *   The machine-readable name of a profile type to load.
+ * @return
+ *   A profile type array or FALSE if $type does not exist.
+ */
+function profile2_type_load($type) {
+  return profile2_get_types($type);
 }
 
 
