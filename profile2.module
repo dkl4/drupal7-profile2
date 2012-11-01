@@ -165,6 +165,24 @@ function profile2_get_types($type_name = NULL) {
 
 
 /**
+ * Fetch a profile object.
+ *
+ * @param $pid
+ *   Integer specifying the profile id.
+ * @param $reset
+ *   A boolean indicating that the internal cache should be reset.
+ * @return
+ *   A fully-loaded $profile object or FALSE if it cannot be loaded.
+ *
+ * @see profile2_load_multiple()
+ */
+function profile2_load($pid, $reset = FALSE) {
+  $profiles = profile2_load_multiple(array($pid), array(), $reset);
+  return reset($profiles);
+}
+
+
+/**
  * Load multiple profiles based on certain conditions.
  *
  * @param $pids
