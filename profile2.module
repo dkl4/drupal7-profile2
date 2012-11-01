@@ -318,6 +318,13 @@ function profile2_type_save(ProfileType $type) {
 
 
 /**
+ * Deletes a profile type from.
+ */
+function profile2_type_delete(ProfileType $type) {
+  $type->delete();
+}
+
+/**
  * Access callback for the entity API.
  */
 function profile2_type_access($op, $type = NULL, $account = NULL) {
