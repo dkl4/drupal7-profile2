@@ -374,7 +374,150 @@ function profile2_user_view($account, $view_mode, $langcode) {
   }
 }
 
+/**
+ * Implements hook_form_FORM_ID_alter() for the user edit form.
+ *
+ * @see profile2_form_validate_handler
+ * @see profile2_form_submit_handler
+ */
+function profile2_form_user_profile_form_alter(&$form, &$form_state) {
+  if (($type = profile2_get_types($form['#user_category'])) && $type->userCategory) {
+    if (empty($form_state['profiles'])) {
+      $profile = profile2_load_by_user($form['#user'], $form['#user_category']);
+      if (empty($profile)) {
+        $profile = profile2_create(array('type' => $form['#user_category'], 'uid' => $form['#user']->uid));
+      }
+      $form_state['profiles'][$profile->type] = $profile;
+    }
+    profile2_attach_form($form, $form_state);
+  }
+}
 
+/**
+ * Implements hook_form_FORM_ID_alter() for the registration form.
+ */
+function profile2_form_user_register_form_alter(&$form, &$form_state) {
+  foreach (profile2_get_types() as $type_name => $profile_type) {
+    if (!empty($profile_type->data['registration'])) {
+      if (empty($form_state['profiles'][$type_name])) {
+        $form_state['profiles'][$type_name] = profile2_create(array('type' => $type_name));
+      }
+      profile2_attach_form($form, $form_state);
+      // Wrap each profile form in a fieldset.
+      $form['profile_' . $type_name] += array(
+        '#type' => 'fieldset',
+        '#title' => check_plain($profile_type->label),
+      );
+    }
+  }
+}
+
+/**
+ * Attaches the profile forms of the profiles set in
+ * $form_state['profiles'].
+ *
+ * Modules may alter the profile2 entity form regardless to which form it is
+ * attached by making use of hook_form_profile2_form_alter().
+ *
+ * @param $form
+ *   The form to which to attach the profile2 form. For each profile the form
+ *   is added to @code $form['profile_' . $profile->type] @endcode. This helper
+ *   also adds in a validation and a submit handler caring for the attached
+ *   profile forms.
+ *
+ * @see hook_form_profile2_form_alter()
+ * @see profile2_form_validate_handler()
+ * @see profile2_form_submit_handler()
+ */
+function profile2_attach_form(&$form, &$form_state) {
+  foreach ($form_state['profiles'] as $type => $profile) {
+    $form['profile_' . $profile->type]['#tree'] = TRUE;
+    $form['profile_' . $profile->type]['#parents'] = array('profile_' . $profile->type);
+    field_attach_form('profile2', $profile, $form['profile_' . $profile->type], $form_state);
+
+    if (count(field_info_instances('profile2', $profile->type)) == 0) {
+      $form['profile_' . $profile->type]['message'] = array(
+        '#access' => user_access('administer profile types'),
+        '#markup' => t('No fields have been associated with this profile type. Go to the <a href="!url">Profile types</a> page to add some fields.', array('!url' => url('admin/structure/profiles'))),
+      );
+    }
+
+    // Provide a central place for modules to alter the profile forms, but
+    // skip that in case the caller cares about invoking the hooks.
+    // @see profile2_form().
+    if (!isset($form_state['profile2_skip_hook'])) {
+      $hooks[] = 'form_profile2_edit_' . $type . '_form';
+      $hooks[] = 'form_profile2_form';
+      drupal_alter($hooks, $form, $form_state);
+    }
+  }
+  $form['#validate'][] = 'profile2_form_validate_handler';
+  $form['#submit'][] = 'profile2_form_submit_handler';
+}
+
+/**
+ * Validation handler for the profile form.
+ *
+ * @see profile2_attach_form()
+ */
+function profile2_form_validate_handler(&$form, &$form_state) {
+  foreach ($form_state['profiles'] as $type => $profile) {
+    if (isset($form_state['values']['profile_' . $profile->type])) {
+      // @see entity_form_field_validate()
+      $pseudo_entity = (object) $form_state['values']['profile_' . $profile->type];
+      $pseudo_entity->type = $type;
+      field_attach_form_validate('profile2', $pseudo_entity, $form['profile_' . $profile->type], $form_state);
+    }
+  }
+}
+
+/**
+ * Submit handler that builds and saves all profiles in the form.
+ *
+ * @see profile2_attach_form()
+ */
+function profile2_form_submit_handler(&$form, &$form_state) {
+  profile2_form_submit_build_profile($form, $form_state);
+  // This is needed as some submit callbacks like user_register_submit() rely on
+  // clean form values.
+  profile2_form_submit_cleanup($form, $form_state);
+
+  foreach ($form_state['profiles'] as $type => $profile) {
+    // During registration set the uid field of the newly created user.
+    if (empty($profile->uid) && isset($form_state['user']->uid)) {
+      $profile->uid = $form_state['user']->uid;
+    }
+    profile2_save($profile);
+  }
+}
+
+/**
+ * Submit builder. Extracts the form values and updates the profile entities.
+ *
+ * @see profile2_attach_form()
+ */
+function profile2_form_submit_build_profile(&$form, &$form_state) {
+  foreach ($form_state['profiles'] as $type => $profile) {
+    // @see entity_form_submit_build_entity()
+    if (isset($form['profile_' . $type]['#entity_builders'])) {
+      foreach ($form['profile_' . $type]['#entity_builders'] as $function) {
+        $function('profile2', $profile, $form['profile_' . $type], $form_state);
+      }
+    }
+    field_attach_submit('profile2', $profile, $form['profile_' . $type], $form_state);
+  }
+}
+
+/**
+ * Cleans up the form values as the user modules relies on clean values.
+ *
+ * @see profile2_attach_form()
+ */
+function profile2_form_submit_cleanup(&$form, &$form_state) {
+  foreach ($form_state['profiles'] as $type => $profile) {
+    unset($form_state['values']['profile_' . $type]);
+  }
+}
 
 /**
  * Implements hook_user_categories().
@@ -659,6 +802,29 @@ class ProfileType extends Entity {
   }
 }
 
+/**
+ * Implements hook_form_FORMID_alter().
+ *
+ * Adds a checkbox for controlling field view access to fields added to
+ * profiles.
+ */
+function profile2_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
+  if ($form['instance']['entity_type']['#value'] == 'profile2') {
+    $form['field']['settings']['profile2_private'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Make the content of this field private.'),
+      '#default_value' => !empty($form['#field']['settings']['profile2_private']),
+      '#description' => t('If checked, the content of this field is only shown to the profile owner and administrators.'),
+    );
+  }
+  else {
+    // Add the value to the form so it isn't lost.
+    $form['field']['settings']['profile2_private'] = array(
+      '#type' => 'value',
+      '#value' => !empty($form['#field']['settings']['profile2_private']),
+    );
+  }
+}
 
 /**
  * Implements hook_field_access().
