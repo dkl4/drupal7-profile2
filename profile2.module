@@ -396,6 +396,20 @@ function profile2_type_access($op, $type = NULL, $account = NULL) {
   return user_access('administer profile types', $account);
 }
 
+/**
+ * Implements hook_theme().
+ */
+function profile2_theme() {
+  return array(
+    'profile2_admin_type' => array(
+      'variables' => array('label' => NULL, 'type' => NULL),
+    ),
+    'profile2' => array(
+      'render element' => 'elements',
+      'template' => 'profile2',
+    ),
+  );
+}
 
 /**
  * The class used for profile entities.
