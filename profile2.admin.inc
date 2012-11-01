@@ -8,6 +8,11 @@
 /**
  * UI controller.
  */
+// EntityDefaultUIController defined in entity/includes/entity.ui.inc
+// This will give you a new "Profile types" link at admin/structure
+// Clicking that link leads you to admin/structure/profiles where you
+// can add or import a profile type.
+// Using the form defined in profile2.admin.inc, and with
 class Profile2TypeUIController extends EntityDefaultUIController {
 
   /**
